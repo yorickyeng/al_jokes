@@ -1,4 +1,4 @@
-package com.tinkoff.aljokes.data
+package com.tinkoff.aljokes.data.api
 
 import retrofit2.http.GET
 import retrofit2.http.Query
