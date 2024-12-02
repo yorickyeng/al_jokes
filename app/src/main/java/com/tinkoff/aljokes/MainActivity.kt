@@ -1,6 +1,5 @@
 package com.tinkoff.aljokes
 
-import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,16 +13,19 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,8 +40,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.skydoves.landscapist.glide.GlideImage
 import com.tinkoff.aljokes.data.api.CatRetrofitInstance
 import com.tinkoff.aljokes.data.api.Joke
@@ -53,14 +58,75 @@ class MainActivity : ComponentActivity() {
         setContent {
             enableEdgeToEdge()
             AlJokesTheme(darkTheme = isSystemInDarkTheme()) {
-                Kitten()
+                val navController = rememberNavController()
+                val jokes = remember { mutableStateListOf<Joke>() }
+                jokes.addAll(jokeRepository)
+
+                NavHost(
+                    navController = navController,
+                    startDestination = "kitten"
+                ) {
+                    composable("kitten") {
+                        Kitten(navController, jokes)
+                    }
+                    composable("add_joke") {
+                        AddJokesScreen(navController, jokes)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun Kitten() {
+fun AddJokesScreen(
+    navController: NavController,
+    jokes: MutableList<Joke>
+) {
+    var setup by remember { mutableStateOf("") }
+    var delivery by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        TextField(
+            value = setup,
+            onValueChange = { setup = it },
+            label = { Text("Setup") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.onBackground)
+        )
+        TextField(
+            value = delivery,
+            onValueChange = { delivery = it },
+            label = { Text("Delivery") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+
+        Button(
+            onClick = {
+                if (setup.isNotBlank() && delivery.isNotBlank()) {
+                    jokes.add(Joke(setup, delivery))
+                    navController.popBackStack()
+                }
+            },
+            modifier = Modifier
+                .align(alignment = Alignment.CenterHorizontally)
+                .padding(top = 16.dp)
+        ) {
+            Text(text = "Add Joke")
+        }
+    }
+}
+
+@Composable
+fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
     val list = remember { mutableStateListOf<Joke>() }
     var dark by remember { mutableStateOf(false) }
     dark = isSystemInDarkTheme()
@@ -136,12 +202,43 @@ fun Kitten() {
                         }
                     }
                 )
+
+                Button(
+                    onClick = {
+                        navController.navigate("add_joke")
+                    },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text(text = "Add Joke")
+                }
             }
-            items(jokeRepository) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.primary) }
+            items(jokes) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.primary) }
             items(list) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.tertiary) }
         }
     }
 }
+
+val jokeRepository = listOf(
+    Joke(
+        "What does Santa suffer from if he gets stuck in a chimney?",
+        "Claustrophobia!"
+    ),
+    Joke("What’s a math teacher’s favorite place in NYC?", "Times Square."),
+    Joke("What do you call a fish wearing a bowtie?", "Sofishticated."),
+    Joke(
+        "What was the spider doing on the computer?",
+        "He was making a web-site.",
+    ),
+    Joke(
+        "Why did the student bring a ladder to school?",
+        "Because he wanted to go to high school."
+    ),
+    Joke(
+        "Why did the biologist break up with the physicist?",
+        "There was no chemistry.",
+    ),
+    Joke("What do you call cheese that isn’t yours?", "Nacho cheese."),
+)
 
 @Composable
 fun JokeBlock(joke: Joke, color: Color) {
@@ -177,27 +274,6 @@ fun JokeBlock(joke: Joke, color: Color) {
 
 }
 
-val jokeRepository = listOf(
-    Joke(
-        "What does Santa suffer from if he gets stuck in a chimney?",
-        "Claustrophobia!"
-    ),
-    Joke("What’s a math teacher’s favorite place in NYC?", "Times Square."),
-    Joke("What do you call a fish wearing a bowtie?", "Sofishticated."),
-    Joke(
-        "What was the spider doing on the computer?",
-        "He was making a web-site.",
-    ),
-    Joke(
-        "Why did the student bring a ladder to school?",
-        "Because he wanted to go to high school."
-    ),
-    Joke(
-        "Why did the biologist break up with the physicist?",
-        "There was no chemistry.",
-    ),
-    Joke("What do you call cheese that isn’t yours?", "Nacho cheese."),
-)
 
 private suspend fun loadJokes(list: MutableList<Joke>, count: Int, dark: Boolean) {
     try {
@@ -211,22 +287,4 @@ private suspend fun loadJokes(list: MutableList<Joke>, count: Int, dark: Boolean
     } catch (e: Exception) {
         println("Error: ${e.message}")
     }
-}
-
-@Composable
-@Preview(
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    showBackground = true,
-    name = "Dark Mode"
-)
-fun KittenPreview() {
-    AlJokesTheme(darkTheme = true) {
-        Kitten()
-    }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun JokeBlockPreview() {
-    JokeBlock(jokeRepository[0], MaterialTheme.colorScheme.primary)
 }
