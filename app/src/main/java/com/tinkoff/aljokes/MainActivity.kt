@@ -41,9 +41,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.skydoves.landscapist.glide.GlideImage
-import com.tinkoff.aljokes.data.CatRetrofitInstance
-import com.tinkoff.aljokes.data.Joke
-import com.tinkoff.aljokes.data.RetrofitInstance
+import com.tinkoff.aljokes.data.api.CatRetrofitInstance
+import com.tinkoff.aljokes.data.api.Joke
+import com.tinkoff.aljokes.data.api.RetrofitInstance
 import com.tinkoff.aljokes.ui.theme.AlJokesTheme
 import kotlinx.coroutines.launch
 
