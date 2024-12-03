@@ -52,6 +52,9 @@ import com.tinkoff.aljokes.data.api.RetrofitInstance
 import com.tinkoff.aljokes.ui.theme.AlJokesTheme
 import kotlinx.coroutines.launch
 
+private const val KITTEN_ROUTE = "kitten"
+private const val ADD_JOKE_ROUTE = "add_joke"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,12 +67,12 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = "kitten"
+                    startDestination = KITTEN_ROUTE
                 ) {
-                    composable("kitten") {
+                    composable(KITTEN_ROUTE) {
                         Kitten(navController, jokes)
                     }
-                    composable("add_joke") {
+                    composable(ADD_JOKE_ROUTE) {
                         AddJokesScreen(navController, jokes)
                     }
                 }
@@ -128,14 +131,14 @@ fun AddJokesScreen(
 @Composable
 fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
     val list = remember { mutableStateListOf<Joke>() }
-    var dark by remember { mutableStateOf(false) }
-    dark = isSystemInDarkTheme()
+    val dark = isSystemInDarkTheme()
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
     var catUrl by rememberSaveable { mutableStateOf("") }
     var reloadCat by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
@@ -145,7 +148,7 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
 
                 if (totalItems > 0 && lastVisibleItemIndex >= totalItems - 1) {
                     coroutineScope.launch {
-                        loadJokes(list, 10, dark)
+                        loadJokes(list, 10, dark) { isLoading = it }
                     }
                 }
             }
@@ -212,8 +215,33 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
                     Text(text = "Add Joke")
                 }
             }
-            items(jokes) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.primary) }
-            items(list) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.tertiary) }
+            items(jokes) { joke ->
+                JokeBlock(
+                    joke,
+                    MaterialTheme.colorScheme.primary,
+                    "[Manually added]"
+                )
+            }
+            items(list) { joke ->
+                JokeBlock(
+                    joke,
+                    MaterialTheme.colorScheme.tertiary,
+                    "[Loaded from network]"
+                )
+            }
+            item {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
         }
     }
 }
@@ -241,7 +269,7 @@ val jokeRepository = listOf(
 )
 
 @Composable
-fun JokeBlock(joke: Joke, color: Color) {
+fun JokeBlock(joke: Joke, color: Color, textMessage: String) {
     var isExpanded by remember { mutableStateOf(false) }
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -268,6 +296,11 @@ fun JokeBlock(joke: Joke, color: Color) {
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Text(
+                    text = textMessage,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
     }
@@ -275,8 +308,14 @@ fun JokeBlock(joke: Joke, color: Color) {
 }
 
 
-private suspend fun loadJokes(list: MutableList<Joke>, count: Int, dark: Boolean) {
+private suspend fun loadJokes(
+    list: MutableList<Joke>,
+    count: Int,
+    dark: Boolean,
+    setLoading: (Boolean) -> Unit
+) {
     try {
+        setLoading(true)
         if (dark) {
             val response = RetrofitInstance.api.getDarkJoke(count)
             list.addAll(response.jokes)
@@ -286,5 +325,7 @@ private suspend fun loadJokes(list: MutableList<Joke>, count: Int, dark: Boolean
         }
     } catch (e: Exception) {
         println("Error: ${e.message}")
+    } finally {
+        setLoading(false)
     }
 }
