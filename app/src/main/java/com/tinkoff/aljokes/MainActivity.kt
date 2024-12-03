@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,7 +30,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,15 +42,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.LiveData
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.room.Room
 import com.skydoves.landscapist.glide.GlideImage
+import com.tinkoff.aljokes.data.Jokes
 import com.tinkoff.aljokes.data.api.CatRetrofitInstance
-import com.tinkoff.aljokes.data.api.Joke
-import com.tinkoff.aljokes.data.api.RetrofitInstance
+import com.tinkoff.aljokes.data.api.loadJokesFromApi
+import com.tinkoff.aljokes.data.db.AppDatabase
+import com.tinkoff.aljokes.data.db.JokesDao
+import com.tinkoff.aljokes.data.db.addInitialJokesToDatabase
 import com.tinkoff.aljokes.ui.theme.AlJokesTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -58,19 +67,30 @@ class MainActivity : ComponentActivity() {
         setContent {
             enableEdgeToEdge()
             AlJokesTheme(darkTheme = isSystemInDarkTheme()) {
-                val navController = rememberNavController()
-                val jokes = remember { mutableStateListOf<Joke>() }
-                jokes.addAll(jokeRepository)
 
+                val db = Room.databaseBuilder(
+                    context = applicationContext,
+                    AppDatabase::class.java,
+                    "jokes_db"
+                ).fallbackToDestructiveMigration()
+                    .build()
+
+                val jokesDao = db.jokesDao()
+                if (jokesDao.getJokes().value.isNullOrEmpty()) {
+                    addInitialJokesToDatabase(jokesDao)
+                }
+                val jokesLiveData: LiveData<List<Jokes>> = jokesDao.getJokes()
+
+                val navController = rememberNavController()
                 NavHost(
                     navController = navController,
                     startDestination = "kitten"
                 ) {
                     composable("kitten") {
-                        Kitten(navController, jokes)
+                        Kitten(navController, jokesLiveData, jokesDao)
                     }
                     composable("add_joke") {
-                        AddJokesScreen(navController, jokes)
+                        AddJokesScreen(navController, jokesDao)
                     }
                 }
             }
@@ -78,64 +98,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
-fun AddJokesScreen(
+fun Kitten(
     navController: NavController,
-    jokes: MutableList<Joke>
+    jokesLiveData: LiveData<List<Jokes>>,
+    jokesDao: JokesDao
 ) {
-    var setup by remember { mutableStateOf("") }
-    var delivery by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-        TextField(
-            value = setup,
-            onValueChange = { setup = it },
-            label = { Text("Setup") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.onBackground)
-        )
-        TextField(
-            value = delivery,
-            onValueChange = { delivery = it },
-            label = { Text("Delivery") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-        )
-
-        Button(
-            onClick = {
-                if (setup.isNotBlank() && delivery.isNotBlank()) {
-                    jokes.add(Joke(setup, delivery))
-                    navController.popBackStack()
-                }
-            },
-            modifier = Modifier
-                .align(alignment = Alignment.CenterHorizontally)
-                .padding(top = 16.dp)
-        ) {
-            Text(text = "Add Joke")
-        }
-    }
-}
-
-@Composable
-fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
-    val list = remember { mutableStateListOf<Joke>() }
-    var dark by remember { mutableStateOf(false) }
-    dark = isSystemInDarkTheme()
-
+    val jokes by jokesLiveData.observeAsState(initial = emptyList())
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-
     var catUrl by rememberSaveable { mutableStateOf("") }
     var reloadCat by remember { mutableStateOf(false) }
+    var isDeleted by remember { mutableStateOf(false) }
+    var dark by remember { mutableStateOf(false) }
+    dark = isSystemInDarkTheme()
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
@@ -145,7 +122,7 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
 
                 if (totalItems > 0 && lastVisibleItemIndex >= totalItems - 1) {
                     coroutineScope.launch {
-                        loadJokes(list, 10, dark)
+                        loadJokesFromApi(10, dark, jokesDao)
                     }
                 }
             }
@@ -158,7 +135,13 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
         } catch (e: Exception) {
             println("Error fetching cat image: ${e.message}")
         }
+    }
 
+    LaunchedEffect(isDeleted) {
+        if (isDeleted) {
+            kotlinx.coroutines.delay(3000)
+            isDeleted = false
+        }
     }
 
     Column(
@@ -177,7 +160,10 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
                         .fillMaxSize()
                         .padding(top = 16.dp)
                         .padding(bottom = 16.dp)
-                        .clickable(onClick = { reloadCat = !reloadCat }),
+                        .clickable(onClick = {
+                            reloadCat = !reloadCat
+                            if (isDeleted) isDeleted = false
+                        }),
                     loading = {
                         Box(
                             modifier = Modifier
@@ -203,45 +189,119 @@ fun Kitten(navController: NavController, jokes: MutableList<Joke>) {
                     }
                 )
 
-                Button(
-                    onClick = {
-                        navController.navigate("add_joke")
-                    },
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(text = "Add Joke")
+                Row {
+                    Button(
+                        onClick = {
+                            navController.navigate("add_joke")
+                        },
+                        Modifier.padding(8.dp)
+                    ) {
+                        Text(text = "Add Joke")
+                    }
+
+                    Button(
+                        onClick = {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                jokesDao.deleteAllJokes()
+                            }
+                            isDeleted = true
+                        },
+                        Modifier.padding(8.dp)
+                    ) {
+                        Text(text = "Delete All")
+                    }
+                }
+
+                if (isDeleted) {
+                    Text(
+                        text = "All jokes deleted!\n\n" +
+                                "Check your internet connection\n" +
+                                "and tap on a cat to reload",
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .padding(horizontal = 20.dp),
+                        color = Color.Red,
+                        fontSize = 18.sp,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 32.sp,
+                    )
                 }
             }
-            items(jokes) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.primary) }
-            items(list) { joke -> JokeBlock(joke, MaterialTheme.colorScheme.tertiary) }
+            items(jokes) { joke -> JokesBlock(joke, MaterialTheme.colorScheme.tertiary) }
         }
     }
 }
 
-val jokeRepository = listOf(
-    Joke(
-        "What does Santa suffer from if he gets stuck in a chimney?",
-        "Claustrophobia!"
-    ),
-    Joke("What’s a math teacher’s favorite place in NYC?", "Times Square."),
-    Joke("What do you call a fish wearing a bowtie?", "Sofishticated."),
-    Joke(
-        "What was the spider doing on the computer?",
-        "He was making a web-site.",
-    ),
-    Joke(
-        "Why did the student bring a ladder to school?",
-        "Because he wanted to go to high school."
-    ),
-    Joke(
-        "Why did the biologist break up with the physicist?",
-        "There was no chemistry.",
-    ),
-    Joke("What do you call cheese that isn’t yours?", "Nacho cheese."),
-)
 
 @Composable
-fun JokeBlock(joke: Joke, color: Color) {
+fun AddJokesScreen(navController: NavController, jokesDao: JokesDao) {
+    var id by remember { mutableStateOf("") }
+    var setup by remember { mutableStateOf("") }
+    var delivery by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        TextField(
+            value = id,
+            onValueChange = { id = it },
+            label = { Text("Id") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+        TextField(
+            value = setup,
+            onValueChange = { setup = it },
+            label = { Text("Setup") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+        TextField(
+            value = delivery,
+            onValueChange = { delivery = it },
+            label = { Text("Delivery") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        )
+
+        Button(
+            onClick = {
+                if (setup.isNotBlank() && delivery.isNotBlank() && id.toIntOrNull() != null) {
+                    val newJoke = Jokes(id.toInt(), setup, delivery)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        jokesDao.insertJoke(newJoke)
+                    }
+                    navController.popBackStack()
+                } else {
+                    errorMessage = "Invalid input. Please check your fields."
+                }
+            },
+            modifier = Modifier
+                .align(alignment = Alignment.CenterHorizontally)
+                .padding(top = 16.dp)
+        ) {
+            Text(text = "Add Joke")
+        }
+        if (errorMessage.isNotBlank()) {
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun JokesBlock(joke: Jokes, color: Color) {
     var isExpanded by remember { mutableStateOf(false) }
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -258,7 +318,7 @@ fun JokeBlock(joke: Joke, color: Color) {
                 .padding(10.dp)
         ) {
             Text(
-                text = joke.setup,
+                text = "${joke.id}. ${joke.setup}",
                 color = color,
                 style = MaterialTheme.typography.bodyLarge,
             )
@@ -270,21 +330,5 @@ fun JokeBlock(joke: Joke, color: Color) {
                 )
             }
         }
-    }
-
-}
-
-
-private suspend fun loadJokes(list: MutableList<Joke>, count: Int, dark: Boolean) {
-    try {
-        if (dark) {
-            val response = RetrofitInstance.api.getDarkJoke(count)
-            list.addAll(response.jokes)
-        } else {
-            val response = RetrofitInstance.api.getAnyJoke(count)
-            list.addAll(response.jokes)
-        }
-    } catch (e: Exception) {
-        println("Error: ${e.message}")
     }
 }
