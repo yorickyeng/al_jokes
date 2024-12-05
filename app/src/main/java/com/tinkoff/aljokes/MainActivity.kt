@@ -61,6 +61,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+private const val KITTEN_ROUTE = "kitten"
+private const val ADD_JOKE_ROUTE = "add_joke"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,12 +87,12 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(
                     navController = navController,
-                    startDestination = "kitten"
+                    startDestination = KITTEN_ROUTE,
                 ) {
-                    composable("kitten") {
+                    composable(KITTEN_ROUTE) {
                         Kitten(navController, jokesLiveData, jokesDao)
                     }
-                    composable("add_joke") {
+                    composable(ADD_JOKE_ROUTE) {
                         AddJokesScreen(navController, jokesDao)
                     }
                 }
@@ -100,19 +103,14 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun Kitten(
-    navController: NavController,
-    jokesLiveData: LiveData<List<Jokes>>,
-    jokesDao: JokesDao
-) {
+fun Kitten(navController: NavController, jokesLiveData: LiveData<List<Jokes>>, jokesDao: JokesDao) {
     val jokes by jokesLiveData.observeAsState(initial = emptyList())
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var catUrl by rememberSaveable { mutableStateOf("") }
     var reloadCat by remember { mutableStateOf(false) }
-    var isDeleted by remember { mutableStateOf(false) }
-    var dark by remember { mutableStateOf(false) }
-    dark = isSystemInDarkTheme()
+    var isLoading by remember { mutableStateOf(false) }
+    val dark = isSystemInDarkTheme()
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo }
@@ -122,7 +120,7 @@ fun Kitten(
 
                 if (totalItems > 0 && lastVisibleItemIndex >= totalItems - 1) {
                     coroutineScope.launch {
-                        loadJokesFromApi(10, dark, jokesDao)
+                        loadJokesFromApi(10, dark, jokesDao) { isLoading = it }
                     }
                 }
             }
@@ -137,13 +135,6 @@ fun Kitten(
         }
     }
 
-    LaunchedEffect(isDeleted) {
-        if (isDeleted) {
-            kotlinx.coroutines.delay(3000)
-            isDeleted = false
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -153,7 +144,7 @@ fun Kitten(
         LazyColumn(
             state = listState
         ) {
-            item {
+            item(contentType = "cat_image") {
                 GlideImage(
                     imageModel = { catUrl },
                     modifier = Modifier
@@ -162,7 +153,6 @@ fun Kitten(
                         .padding(bottom = 16.dp)
                         .clickable(onClick = {
                             reloadCat = !reloadCat
-                            if (isDeleted) isDeleted = false
                         }),
                     loading = {
                         Box(
@@ -188,11 +178,12 @@ fun Kitten(
                         }
                     }
                 )
-
+            }
+            item(contentType = "buttons") {
                 Row {
                     Button(
                         onClick = {
-                            navController.navigate("add_joke")
+                            navController.navigate(ADD_JOKE_ROUTE)
                         },
                         Modifier.padding(8.dp)
                     ) {
@@ -204,7 +195,6 @@ fun Kitten(
                             CoroutineScope(Dispatchers.IO).launch {
                                 jokesDao.deleteAllJokes()
                             }
-                            isDeleted = true
                         },
                         Modifier.padding(8.dp)
                     ) {
@@ -212,7 +202,7 @@ fun Kitten(
                     }
                 }
 
-                if (isDeleted) {
+                if (jokes.isEmpty()) {
                     Text(
                         text = "All jokes deleted!\n\n" +
                                 "Check your internet connection\n" +
@@ -227,7 +217,26 @@ fun Kitten(
                     )
                 }
             }
-            items(jokes) { joke -> JokesBlock(joke, MaterialTheme.colorScheme.tertiary) }
+            items(
+                items = jokes,
+                key = { joke -> joke.id },
+                contentType = { "joke" }
+            ) { joke ->
+                JokesBlock(joke, MaterialTheme.colorScheme.tertiary)
+            }
+            item(contentType = "loader") {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
         }
     }
 }
