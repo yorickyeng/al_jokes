@@ -1,11 +1,11 @@
-package com.tinkoff.aljokes.data.db
+package com.tinkoff.aljokes.data.datasource.local
 
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.tinkoff.aljokes.data.Jokes
+import com.tinkoff.aljokes.domain.entity.Jokes
 
 @Dao
 interface JokesDao {

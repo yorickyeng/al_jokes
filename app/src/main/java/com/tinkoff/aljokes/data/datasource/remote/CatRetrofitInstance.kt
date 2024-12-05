@@ -1,15 +1,15 @@
-package com.tinkoff.aljokes.data.api
+package com.tinkoff.aljokes.data.datasource.remote
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-object RetrofitInstance {
-    private const val BASE_URL = "https://v2.jokeapi.dev/"
-    val api: ApiService by lazy {
+object CatRetrofitInstance {
+    private const val BASE_URL = "https://api.thecatapi.com/"
+    val api: CatApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(ApiService::class.java)
+            .create(CatApiService::class.java)
     }
 }

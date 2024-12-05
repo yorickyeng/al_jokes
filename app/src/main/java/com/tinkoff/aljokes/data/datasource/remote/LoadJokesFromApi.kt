@@ -1,6 +1,6 @@
-package com.tinkoff.aljokes.data.api
+package com.tinkoff.aljokes.data.datasource.remote
 
-import com.tinkoff.aljokes.data.db.JokesDao
+import com.tinkoff.aljokes.data.datasource.local.JokesDao
 
 suspend fun loadJokesFromApi(
     count: Int,

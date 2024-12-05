@@ -1,6 +1,7 @@
-package com.tinkoff.aljokes.data.db
+package com.tinkoff.aljokes.domain.repository
 
-import com.tinkoff.aljokes.data.Jokes
+import com.tinkoff.aljokes.data.datasource.local.JokesDao
+import com.tinkoff.aljokes.domain.entity.Jokes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

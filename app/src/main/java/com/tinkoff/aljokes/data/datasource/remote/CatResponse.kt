@@ -1,4 +1,4 @@
-package com.tinkoff.aljokes.data.api
+package com.tinkoff.aljokes.data.datasource.remote
 
 import com.google.gson.annotations.SerializedName
 

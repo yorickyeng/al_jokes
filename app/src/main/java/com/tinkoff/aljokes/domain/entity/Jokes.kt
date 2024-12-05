@@ -1,4 +1,4 @@
-package com.tinkoff.aljokes.data
+package com.tinkoff.aljokes.domain.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
