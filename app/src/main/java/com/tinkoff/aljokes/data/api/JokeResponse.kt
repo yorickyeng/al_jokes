@@ -1,18 +1,9 @@
 package com.tinkoff.aljokes.data.api
 
 import com.google.gson.annotations.SerializedName
+import com.tinkoff.aljokes.data.Jokes
 
 data class JokeResponse(
     @SerializedName("jokes")
-    val jokes: List<Joke>,
-    @SerializedName("amount")
-    val amount: String,
-
-    )
-
-data class Joke(
-    @SerializedName("setup")
-    val setup: String,
-    @SerializedName("delivery")
-    val delivery: String,
+    val jokes: List<Jokes>
 )
