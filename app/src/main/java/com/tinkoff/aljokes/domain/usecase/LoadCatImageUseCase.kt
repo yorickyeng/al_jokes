@@ -1,11 +1,11 @@
 package com.tinkoff.aljokes.domain.usecase
 
-import com.tinkoff.aljokes.domain.repository.JokesRepository
+import com.tinkoff.aljokes.domain.repository.CatImageRepository
 
 class LoadCatImageUseCase(
-    private val jokesRepository: JokesRepository
+    private val catImageRepository: CatImageRepository
 ) {
-    suspend operator fun invoke(): String {
-        return jokesRepository.fetchCatImageFromApi()
+    suspend operator fun invoke(): String? {
+        return catImageRepository.fetchCatImageUrl()
     }
 }

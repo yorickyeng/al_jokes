@@ -1,39 +1,33 @@
 package com.tinkoff.aljokes.data.repository
 
+import androidx.lifecycle.LiveData
 import com.tinkoff.aljokes.data.datasource.local.JokesDao
-import com.tinkoff.aljokes.data.datasource.remote.CatRetrofitInstance
-import com.tinkoff.aljokes.data.datasource.remote.RetrofitInstance
-import com.tinkoff.aljokes.domain.entity.Jokes
+import com.tinkoff.aljokes.data.datasource.remote.ApiService
+import com.tinkoff.aljokes.domain.entity.Joke
 import com.tinkoff.aljokes.domain.repository.JokesRepository
 
 class JokesRepositoryImpl(
-    private val jokesDao: JokesDao
+    private val jokesDao: JokesDao,
+    private val api: ApiService
 ) : JokesRepository {
 
-    override suspend fun fetchJokesFromApi(count: Int, dark: Boolean): List<Jokes> {
+    override suspend fun fetchJokes(count: Int, dark: Boolean): List<Joke> {
         return if (dark) {
-            RetrofitInstance.api.getDarkJoke(count).jokes
+            api.getDarkJoke(count).jokes
         } else {
-            RetrofitInstance.api.getAnyJoke(count).jokes
+            api.getAnyJoke(count).jokes
         }
     }
 
-    override suspend fun saveJokesToLocal(jokes: List<Jokes>) {
-        for (joke in jokes) {
-            jokesDao.insertJoke(joke)
-        }
+    override suspend fun saveJokesToLocal(jokes: List<Joke>) {
+        jokesDao.insertJokes(jokes)
     }
 
-    override suspend fun saveOneJokeToLocal(joke: Jokes) {
-        jokesDao.insertJoke(joke)
-    }
-
-    override suspend fun deleteJokesFromLocal(jokes: List<Jokes>) {
+    override suspend fun deleteAllJokesFromLocal() {
         jokesDao.deleteAllJokes()
     }
 
-    override suspend fun fetchCatImageFromApi(): String {
-        val catUrl = CatRetrofitInstance.api.getCat().firstOrNull()?.url
-        return catUrl ?: ""
+    override suspend fun getJokes(): LiveData<List<Joke>> {
+        return jokesDao.getJokes()
     }
 }

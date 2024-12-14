@@ -1,11 +1,11 @@
 package com.tinkoff.aljokes.domain.repository
 
-import com.tinkoff.aljokes.domain.entity.Jokes
+import androidx.lifecycle.LiveData
+import com.tinkoff.aljokes.domain.entity.Joke
 
 interface JokesRepository {
-    suspend fun fetchJokesFromApi(count: Int, dark: Boolean): List<Jokes>
-    suspend fun saveJokesToLocal(jokes: List<Jokes>)
-    suspend fun saveOneJokeToLocal(joke: Jokes)
-    suspend fun deleteJokesFromLocal(jokes: List<Jokes>)
-    suspend fun fetchCatImageFromApi(): String
+    suspend fun fetchJokes(count: Int, dark: Boolean): List<Joke>
+    suspend fun saveJokesToLocal(jokes: List<Joke>)
+    suspend fun deleteAllJokesFromLocal()
+    suspend fun getJokes(): LiveData<List<Joke>>
 }

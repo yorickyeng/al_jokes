@@ -8,7 +8,7 @@ class LoadJokesUseCase(
     suspend operator fun invoke(
         count: Int, dark: Boolean
     ) {
-        val jokes = jokesRepository.fetchJokesFromApi(count, dark)
+        val jokes = jokesRepository.fetchJokes(count, dark)
         jokesRepository.saveJokesToLocal(jokes)
     }
 }

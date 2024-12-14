@@ -1,4 +1,4 @@
-package com.tinkoff.aljokes.presentation.ui
+package com.tinkoff.aljokes.presentation.kitten_screen
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
@@ -17,10 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tinkoff.aljokes.domain.entity.Jokes
+import com.tinkoff.aljokes.domain.entity.Joke
 
 @Composable
-fun JokesBlock(joke: Jokes) {
+fun JokeBlock(joke: Joke) {
     var isExpanded by remember { mutableStateOf(false) }
     Surface(
         shape = MaterialTheme.shapes.medium,

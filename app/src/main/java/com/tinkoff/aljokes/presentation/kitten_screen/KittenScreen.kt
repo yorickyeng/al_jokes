@@ -1,4 +1,4 @@
-package com.tinkoff.aljokes.presentation.ui
+package com.tinkoff.aljokes.presentation.kitten_screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.snapshotFlow
@@ -29,25 +30,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.skydoves.landscapist.glide.GlideImage
 import com.tinkoff.aljokes.ADD_JOKE_ROUTE
 import com.tinkoff.aljokes.R
-import com.tinkoff.aljokes.domain.entity.Jokes
-import com.tinkoff.aljokes.presentation.viewmodel.KittenViewModel
+import com.tinkoff.aljokes.data.datasource.local.AppDatabase
+import com.tinkoff.aljokes.di.AppModule
+import com.tinkoff.aljokes.domain.repository.CatImageRepository
+import com.tinkoff.aljokes.domain.repository.JokesRepository
 
 @Composable
 fun KittenScreen(
-    navController: NavController, jokesLiveData: LiveData<List<Jokes>>, viewModel: KittenViewModel
+    navController: NavController,
+    jokesRepository: JokesRepository,
+    catImageRepository: CatImageRepository,
+    db: AppDatabase
 ) {
 
-    val jokes by jokesLiveData.observeAsState(initial = emptyList())
+    val kittenViewModel: KittenViewModel = viewModel(
+        factory = KittenViewModelFactory(
+            AppModule.loadJokesUseCase(jokesRepository),
+            AppModule.deleteJokesUseCase(jokesRepository),
+            AppModule.loadCatImageUseCase(catImageRepository),
+            db
+        )
+    )
+
+    val jokes by kittenViewModel.jokeLiveData.observeAsState(initial = emptyList())
     val listState = rememberLazyListState()
     val dark = isSystemInDarkTheme()
 
+    val isLoading by kittenViewModel.isLoading.collectAsState()
+    val catUrl by kittenViewModel.catUrl.collectAsState()
+
     LaunchedEffect(dark) {
-        viewModel.loadJokes(dark)
+        kittenViewModel.loadJokes(dark)
     }
 
     LaunchedEffect(listState) {
@@ -56,13 +74,9 @@ fun KittenScreen(
             val lastVisibleItemIndex = visibleItems.lastOrNull()?.index ?: 0
 
             if (totalItems > 0 && lastVisibleItemIndex >= totalItems - 1) {
-                viewModel.loadJokes(dark)
+                kittenViewModel.loadJokes(dark)
             }
         }
-    }
-
-    LaunchedEffect(viewModel.reloadCat) {
-        viewModel.getCatUrl()
     }
 
     Column(
@@ -75,13 +89,13 @@ fun KittenScreen(
             state = listState
         ) {
             item(contentType = "cat_image") {
-                GlideImage(imageModel = { viewModel.catUrl },
+                GlideImage(imageModel = { catUrl },
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 16.dp)
                         .padding(bottom = 16.dp)
                         .clickable(onClick = {
-                            viewModel.reloadCat = !viewModel.reloadCat
+                            kittenViewModel.getCatUrl()
                         }),
                     loading = {
                         Box(
@@ -98,7 +112,7 @@ fun KittenScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clickable(onClick = {
-                                    viewModel.reloadCat = !viewModel.reloadCat
+                                    kittenViewModel.getCatUrl()
                                 }), contentAlignment = Alignment.Center
                         ) {
                             Image(
@@ -120,7 +134,7 @@ fun KittenScreen(
 
                     Button(
                         onClick = {
-                            viewModel.deleteJokes(jokes)
+                            kittenViewModel.deleteJokes()
                         }, Modifier.padding(8.dp)
                     ) {
                         Text(text = "Delete All")
@@ -141,10 +155,10 @@ fun KittenScreen(
                 }
             }
             items(items = jokes, key = { joke -> joke.id }, contentType = { "joke" }) { joke ->
-                JokesBlock(joke)
+                JokeBlock(joke)
             }
             item(contentType = "loader") {
-                if (viewModel.isLoading) {
+                if (isLoading) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
