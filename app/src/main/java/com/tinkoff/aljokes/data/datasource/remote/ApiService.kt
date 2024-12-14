@@ -1,5 +1,6 @@
 package com.tinkoff.aljokes.data.datasource.remote
 
+import com.tinkoff.aljokes.data.model.JokeResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
