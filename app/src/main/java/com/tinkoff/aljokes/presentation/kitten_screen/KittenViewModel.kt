@@ -11,16 +11,17 @@ import com.tinkoff.aljokes.domain.usecase.LoadJokesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 
-class KittenViewModel(
+class KittenViewModel @Inject constructor(
     private val loadJokesUseCase: LoadJokesUseCase,
     private val deleteAllJokesUseCase: DeleteAllJokesUseCase,
     private val loadCatImageUseCase: LoadCatImageUseCase,
-    db: AppDatabase
+    database: AppDatabase
 ) : ViewModel() {
 
-    private val jokesDao = db.jokesDao()
+    private val jokesDao = database.jokesDao()
     val jokeLiveData: LiveData<List<Joke>> = jokesDao.getJokes()
 
     private val _isLoading = MutableStateFlow(false)
@@ -28,7 +29,6 @@ class KittenViewModel(
 
     private val _catUrl = MutableStateFlow<String?>(null)
     val catUrl: StateFlow<String?> = _catUrl
-//    var catUrl by mutableStateOf<String?>("")
 
     init {
         getCatUrl()
