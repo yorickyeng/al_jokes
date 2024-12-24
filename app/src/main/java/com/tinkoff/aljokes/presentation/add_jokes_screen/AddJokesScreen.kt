@@ -21,24 +21,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.tinkoff.aljokes.di.AppModule
-import com.tinkoff.aljokes.domain.repository.JokesRepository
 
 @Composable
 fun AddJokesScreen(
     navController: NavController,
-    jokesRepository: JokesRepository,
+    addJokesViewModelFactory: AddJokesViewModelFactory
 ) {
 
-    val addJokesViewModel: AddJokesViewModel = viewModel(
-        factory = AddJokesViewModelFactory(
-            navController,
-            AppModule.addJokesUseCase(jokesRepository)
-        )
+    val viewModel: AddJokesViewModel = viewModel(
+        factory = addJokesViewModelFactory
     )
 
-    val errorMessage by addJokesViewModel.errorMessage.collectAsState()
-    val isLoading by addJokesViewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val navigateBack by viewModel.navigateBack.collectAsState()
+
+    if (navigateBack) {
+        navController.popBackStack()
+        viewModel.resetNavigationFlag()
+    }
 
     Column(
         modifier = Modifier
@@ -47,24 +48,24 @@ fun AddJokesScreen(
             .padding(16.dp)
     ) {
         TextField(
-            value = addJokesViewModel.id.value,
-            onValueChange = { addJokesViewModel.onIdChange(it) },
+            value = viewModel.id.value,
+            onValueChange = { viewModel.onIdChange(it) },
             label = { Text("Id") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
         )
         TextField(
-            value = addJokesViewModel.setup.value,
-            onValueChange = { addJokesViewModel.onSetupChange(it) },
+            value = viewModel.setup.value,
+            onValueChange = { viewModel.onSetupChange(it) },
             label = { Text("Setup") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
         )
         TextField(
-            value = addJokesViewModel.delivery.value,
-            onValueChange = { addJokesViewModel.onDeliveryChange(it) },
+            value = viewModel.delivery.value,
+            onValueChange = { viewModel.onDeliveryChange(it) },
             label = { Text("Delivery") },
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,7 +74,7 @@ fun AddJokesScreen(
 
         Button(
             onClick = {
-                addJokesViewModel.onAddClick()
+                viewModel.onAddClick()
             },
             modifier = Modifier
                 .align(alignment = Alignment.CenterHorizontally)

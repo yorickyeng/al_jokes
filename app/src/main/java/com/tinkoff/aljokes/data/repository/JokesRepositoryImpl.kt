@@ -5,8 +5,9 @@ import com.tinkoff.aljokes.data.datasource.local.JokesDao
 import com.tinkoff.aljokes.data.datasource.remote.ApiService
 import com.tinkoff.aljokes.domain.entity.Joke
 import com.tinkoff.aljokes.domain.repository.JokesRepository
+import javax.inject.Inject
 
-class JokesRepositoryImpl(
+class JokesRepositoryImpl @Inject constructor(
     private val jokesDao: JokesDao,
     private val api: ApiService
 ) : JokesRepository {

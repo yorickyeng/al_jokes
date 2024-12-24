@@ -3,15 +3,14 @@ package com.tinkoff.aljokes.presentation.add_jokes_screen
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavController
 import com.tinkoff.aljokes.domain.entity.Joke
 import com.tinkoff.aljokes.domain.usecase.AddJokesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AddJokesViewModel(
-    private val navController: NavController,
+class AddJokesViewModel @Inject constructor(
     private val addJokesUseCase: AddJokesUseCase
 ) : ViewModel() {
 
@@ -20,6 +19,9 @@ class AddJokesViewModel(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> get() = _isLoading
+
+    private val _navigateBack = MutableStateFlow(false)
+    val navigateBack: StateFlow<Boolean> get() = _navigateBack
 
     val id = mutableStateOf("")
     val setup = mutableStateOf("")
@@ -57,10 +59,14 @@ class AddJokesViewModel(
                 )
             addJoke(newJokeList)
             clearFields()
-            navController.popBackStack()
+            _navigateBack.value = true
         } else {
             _errorMessage.value = "Invalid input. Please check your fields."
         }
+    }
+
+    fun resetNavigationFlag() {
+        _navigateBack.value = false
     }
 
     fun onIdChange(newId: String) {
